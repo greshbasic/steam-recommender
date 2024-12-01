@@ -10,9 +10,42 @@ def recommend_games_from_tags(tags):
     tags = dict(sorted(tags.items(), key=lambda item: item[1], reverse=True))
     top_ten_tags = list(tags.keys())[:10]
     three_random_tags = random.sample(top_ten_tags, 3)
-    print("tags:", three_random_tags)
-    # find a random game with these three tags
+    formatted_tags = [tag.replace(" ", "+") for tag in three_random_tags]
+    search_term = "%2C+".join(formatted_tags)
+    search_url = f"https://store.steampowered.com/search/?term={search_term}"
+    
+    all_titles = []
+    response = requests.get(search_url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        titles = soup.find_all('span', class_='title')
+        for title in titles:
+            all_titles.append(title.text)
 
+        random_game = random.choice(all_titles)
+        display_recommendations(random_game)
+    else:
+        print("Unable to access search page.")
+        
+def display_recommendations(game_name):
+    URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
+    response = requests.get(URL)
+    if response.status_code == 200:
+        data = response.json()
+        app_list = data["applist"]["apps"]
+        appid = None
+        for app in app_list:
+            if app["name"] == game_name:
+                appid = app["appid"]
+                break
+        if appid:
+            game_url = f"https://store.steampowered.com/app/{appid}/{format_game_name_for_url(game_name)}/"
+            print(f"I recommend {game_name}! Check it out here: {game_url}")
+        else:
+            print(f"I recommend {game_name}!")
+    else:
+        print(f"I recommend {game_name}!")
+        
 def determine_tags_for_user(steam_id):
     games = get_games_from_user(int(steam_id))
     top_ten_played_games = sorted(games, key=lambda x: x['playtime_forever'], reverse=True)[:10]
@@ -30,8 +63,8 @@ def determine_tags_for_user(steam_id):
     sorted_dict = dict(sorted(weighted_tags_dict.items(), key=lambda item: item[1], reverse=True))
     sorted_dict_json = json.dumps(sorted_dict)
     save_user_to_db(steam_id, sorted_dict_json)
-    # recommend_games_from_tags(tags)
-
+    recommend_games_from_tags(tags)
+    
 def get_games_from_user(steam_id):
     URL = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
     params = {
