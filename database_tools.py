@@ -16,9 +16,9 @@ def check_if_user_exists(steam_id):
         cursor.execute("SELECT * FROM users WHERE steamid=%s", (steam_id,))
         result = cursor.fetchone()
         if result:
-            print(f"User with ID {steam_id} found!")
+            print(f"User with ID {steam_id} found in DB!")
             return (True, result[1])
-        print(f"User with ID {steam_id} not found.")
+        print(f"User with ID {steam_id} not found in DB.")
         return (False, None)
     except Exception as e:
         print(f"Error: {e}")

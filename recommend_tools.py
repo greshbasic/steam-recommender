@@ -63,7 +63,7 @@ def determine_tags_for_user(steam_id):
     sorted_dict = dict(sorted(weighted_tags_dict.items(), key=lambda item: item[1], reverse=True))
     sorted_dict_json = json.dumps(sorted_dict)
     save_user_to_db(steam_id, sorted_dict_json)
-    recommend_games_from_tags(tags)
+    recommend_games_from_tags(sorted_dict)
     
 def get_games_from_user(steam_id):
     URL = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
