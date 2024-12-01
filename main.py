@@ -1,37 +1,11 @@
 import psycopg2
-import requests
-from config import POSTGRES_CONFIG
+from config import POSTGRES_CONFIG, NEBULA_ID, FAKE_ID
 from recommend_tools import handle_recommendation
-
-def connect_to_db():
-    try:
-        conn = psycopg2.connect(**POSTGRES_CONFIG)
-        print("Connection successful!")
-        conn.close()
-    except Exception as e:
-        print(f"Connection failed: {e}")
-        
-def check_if_user_exists(steam_id):
-    try:
-        connection = psycopg2.connect(**POSTGRES_CONFIG)
-        cursor = connection.cursor()
-        cursor.execute(f"SELECT * FROM users WHERE steamid={steam_id}")
-        result = cursor.fetchone()
-        if result:
-            print(f"User with ID {steam_id} found!")
-            return (True, result[1])
-        print(f"User with ID {steam_id} not found.")
-        return (False, None)
-    except Exception as e:
-        print(f"Error: {e}")
-        return (False, None)
-    finally:
-        cursor.close()
-        connection.close()
+from database_tools import connect_to_db, check_if_user_exists
         
 def main():
     connect_to_db()
-    steam_id = int(input("Enter a Steam ID: "))
+    steam_id = NEBULA_ID
     user_exists, tags = check_if_user_exists(steam_id)
     handle_recommendation(steam_id, user_exists, tags)
 

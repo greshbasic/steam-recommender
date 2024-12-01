@@ -1,18 +1,100 @@
+import json
+import re
+import requests
+import random
+from bs4 import BeautifulSoup
+from config import STEAM_API_KEY
+from database_tools import save_user_to_db
+
 def recommend_games_from_tags(tags):
-    pass
+    tags = dict(sorted(tags.items(), key=lambda item: item[1], reverse=True))
+    top_ten_tags = list(tags.keys())[:10]
+    three_random_tags = random.sample(top_ten_tags, 3)
+    print("tags:", three_random_tags)
+    # find a random game with these three tags
 
 def determine_tags_for_user(steam_id):
-    games = get_games_from_user(steam_id)
-    tags = get_tags_from_games(games)
-    # do math to get weighted tags
-    # insert tags into database
-    recommend_games_from_tags(tags)
+    games = get_games_from_user(int(steam_id))
+    top_ten_played_games = sorted(games, key=lambda x: x['playtime_forever'], reverse=True)[:10]
+    weights = get_weights_for_games(top_ten_played_games)
+    weighted_tags_dict = {}
+    for game in top_ten_played_games:
+        tags = get_tags_from_game(game)
+        game_weight = weights[game["appid"]]
+        for tag in tags:
+            if tag in weighted_tags_dict:
+                weighted_tags_dict[tag] += game_weight
+            else:
+                weighted_tags_dict[tag] = game_weight
+        
+    sorted_dict = dict(sorted(weighted_tags_dict.items(), key=lambda item: item[1], reverse=True))
+    sorted_dict_json = json.dumps(sorted_dict)
+    save_user_to_db(steam_id, sorted_dict_json)
+    # recommend_games_from_tags(tags)
 
 def get_games_from_user(steam_id):
-    pass
+    URL = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
+    params = {
+        "key": STEAM_API_KEY,
+        "steamid": steam_id,
+        "include_appinfo": 1,
+        "include_played_free_games": 1,
+        "format": "json"
+    }
+    
+    try:
+        response = requests.get(URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if "response" in data and "games" in data["response"]:
+            return data["response"]["games"]
+        else:
+            print("Unable to find games for user, they may have a private profile.")
+            return []
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP error: {e}")
+        return []
+    
+def get_weights_for_games(games):
+    sorted_games = sorted(games, key=lambda game: game['playtime_forever'], reverse=True)
+    weight_dict = {}
+    total_games = len(sorted_games)
+    
+    for i, game in enumerate(sorted_games):
+        appid = game["appid"]
+        weight = (total_games - i) / total_games
+        weight_dict[appid] = weight
+    
+    return weight_dict
+    
+     
+def format_game_name_for_url(game_name):
+    replaced_string = game_name.replace(" ", "_").replace(":", "").replace("-", "_").replace("'", "")
+    title_case_string = replaced_string.title()
+    return title_case_string
 
-def get_tags_from_games(games):
-    pass
+def get_tags_from_game(game):
+    appid = game["appid"]
+    game_name = format_game_name_for_url(game["name"])
+    URL = f"https://store.steampowered.com/app/{appid}/{game_name}/"
+    
+    response = requests.get(URL)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        script_tag = soup.find('script', text=re.compile('InitAppTagModal'))
+        script_content = script_tag.string if script_tag else ''
+        json_data_match = re.search(r'InitAppTagModal\(\s*\d+,\s*(\[\{.*?\}\])\s*,', script_content)
+        if json_data_match:
+            json_data = json.loads(json_data_match.group(1))
+            tag_names = [tag['name'] for tag in json_data]
+            return tag_names
+        else:
+            print("Unable to find tag data.")
+            return []
+    else:
+        print("Unable to access app page.")
+        return []
 
 def handle_recommendation(steam_id, user_exists, tags):
     if user_exists:
