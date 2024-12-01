@@ -1,7 +1,7 @@
 import psycopg2
 import requests
 from config import POSTGRES_CONFIG
-from recommend_tools import recommend_games, determine_tags_for_user
+from recommend_tools import handle_recommendation
 
 def connect_to_db():
     try:
@@ -33,11 +33,7 @@ def main():
     connect_to_db()
     steam_id = int(input("Enter a Steam ID: "))
     user_exists, tags = check_if_user_exists(steam_id)
-    if user_exists:
-        recommend_games(tags)
-    else:
-        determine_tags_for_user(steam_id)
-    
+    handle_recommendation(steam_id, user_exists, tags)
 
 if __name__ == "__main__":
     main()
