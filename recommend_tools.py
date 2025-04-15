@@ -9,6 +9,7 @@ from database_tools import save_user_to_db
 def recommend_games_from_tags(tags):
     if not tags:
         return
+
     tags = dict(sorted(tags.items(), key=lambda item: item[1], reverse=True))
     top_ten_tags = list(tags.keys())[:10]
     three_random_tags = random.sample(top_ten_tags, 3)
@@ -52,6 +53,7 @@ def determine_tags_for_user(steam_id):
     games = get_games_from_user(int(steam_id))
     if not games:
         return
+
     top_ten_played_games = sorted(games, key=lambda x: x['playtime_forever'], reverse=True)[:10]
     weights = get_weights_for_games(top_ten_played_games)
     weighted_tags_dict = {}
@@ -104,8 +106,7 @@ def get_weights_for_games(games):
         weight_dict[appid] = weight
     
     return weight_dict
-    
-     
+
 def format_game_name_for_url(game_name):
     replaced_string = game_name.replace(" ", "_").replace(":", "").replace("-", "_").replace("'", "")
     title_case_string = replaced_string.title()
